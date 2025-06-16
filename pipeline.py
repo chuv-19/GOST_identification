@@ -149,8 +149,7 @@ if __name__ == "__main__":
     api_key = "arA3rgXk1YQskcsxcvcUYHtsEPhC3plI"  # Твой ключ
     pipeline = Pipeline(api_key=api_key)
 
-    file_path = input("Введите путь к документу .docx: ").strip()
-
+    file_path = input("Введите путь к документу .docx : ").strip().strip('"\'')
     result = pipeline.pipe(
         user_message={},  # В данном примере не используется
         model_id=pipeline.valves.mistral_model,
