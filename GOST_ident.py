@@ -108,6 +108,7 @@ def process_docx(file_path: str) -> str:
     return f"Обработка завершена. Отчёт сохранён: {output_path}"
 
 if __name__ == "__main__":
-    file_path = input("Введите путь к документу .docx: ").strip()
+    file_path = input("Введите путь к документу .docx: ").strip().strip('"\'')
     result = process_docx(file_path)
+
     print(result)
