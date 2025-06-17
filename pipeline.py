@@ -1,4 +1,15 @@
 """
+ПРОДУМАТЬ ЛОГИКУ:
+1. Так как все модели обучены на данных из открытых источников в прошлом, то они не могут знать о новых документах. Предложить варианты решения проблемы, реализовать их.
+2. Если модель не может определить статус документа, то нужно предложить альтернативные варианты определения статуса, реализовать их.
+
+ИСПРАВИТЬ:
+1. Модель на тестовых документах не может определить статус ни одного документа.
+2. Поле дата должно быть отдельным столбцом в документе
+"""
+
+
+"""
 requirements: requests, pandas, python-docx, openpyxl, pydantic
 """
 
@@ -33,6 +44,7 @@ class Pipeline:
                     texts.append(cell.text)
         return "\n".join(texts)
 
+    # ИСПРАВИТЬ: ДЛЯ ВСЕХ ДОКУМЕНТОВ МОДЕЛЬ СТАВИТ СТАТУС "НЕИЗВЕСТЕН"
     def query_model(self, prompt: str) -> str:
         API_URL = "https://api.mistral.ai/v1/chat/completions"
         HEADERS = {
@@ -148,6 +160,8 @@ if __name__ == "__main__":
     # Пример запуска пайплайна
     api_key = "arA3rgXk1YQskcsxcvcUYHtsEPhC3plI"  # Твой ключ
     pipeline = Pipeline(api_key=api_key)
+
+    
 
     file_path = input("Введите путь к документу .docx : ").strip().strip('"\'')
     result = pipeline.pipe(
