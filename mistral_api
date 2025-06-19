@@ -1,0 +1,49 @@
+import aiohttp
+import logging
+import pandas as pd
+from io import StringIO
+
+API_URL = "https://api.mistral.ai/v1/chat/completions"
+API_KEY = "arA3rgXk1YQskcsxcvcUYHtsEPhC3plI"
+
+logger = logging.getLogger(__name__)
+
+async def ask_mistral_api(text: str) -> str:
+    headers = {
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json"
+    }
+    prompt = f"""
+Тебе дан текст, содержащий нормативные документы. Извлеки из него список документов с полями:
+- Тип (ГОСТ, Приказ, Постановление)
+- Номер
+- Дата (если есть)
+- Статус (действует, не действует, утратил силу, статус неизвестен)
+Ответ верни в виде таблицы CSV с колонками: Тип документа, Номер, Дата, Статус
+
+Текст:
+{text}
+"""
+    data = {
+        "model": "mistral-small-latest",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.2
+    }
+
+    async with aiohttp.ClientSession() as session:
+        async with session.post(API_URL, headers=headers, json=data, timeout=60) as resp:
+            if resp.status != 200:
+                logger.error(f"Mistral API error: {resp.status}")
+                return ""
+            result = await resp.json()
+            content = result['choices'][0]['message']['content']
+            if not content.strip():
+                logger.warning("Пустой ответ от Mistral API")
+            return content
+
+def parse_csv_response(text: str) -> pd.DataFrame:
+    try:
+        return pd.read_csv(StringIO(text))
+    except Exception as e:
+        logger.warning(f"Ошибка при разборе CSV от модели: {e}")
+        return pd.DataFrame()
