@@ -1,0 +1,70 @@
+import re
+from datetime import datetime
+
+def extract_documents_regex(text):
+    # Список возможных статусов (расширяем по необходимости)
+    status_keywords = [
+        r'действует', r'утратил(?:а|о|и)?\s+силу', r'не\s+действует',
+        r'отменен(?:а|о|ы)?', r'прекратил(?:а|о|и)?\s+действие',
+        r'введен(?:а|о|ы)?\s+в\s+действие', r'приостановлен(?:а|о|ы)?'
+    ]
+    status_pattern = re.compile(r'(' + '|'.join(status_keywords) + r')', re.IGNORECASE)
+
+    # Основные шаблоны документов
+    patterns = [
+        # Постановления Правительства
+        re.compile(
+            r'(?P<type>Постановление Правительства(?: Российской Федерации| РФ)?)\s*'
+            r'(?:№\s*(?P<number>\d+))?\s*'
+            r'(?:от\s*(?P<date>\d{1,2}\.\d{2}\.\d{4}|\d{1,2}\.\d{2}\.\d{2}))?',
+            re.IGNORECASE
+        ),
+        # Общие документы
+        re.compile(
+            r'(?P<type>Приказ|Распоряжение|Федеральный закон|ГОСТ|СНИП|Технический регламент)\s*'
+            r'(?:№?\s*(?P<number>[\d\-]+))?\s*'
+            r'(?:от\s*(?P<date>\d{1,2}\.\d{2}\.\d{4}|\d{1,2}\.\d{2}\.\d{2}))?',
+            re.IGNORECASE
+        )
+    ]
+
+    documents = []
+
+    for pattern in patterns:
+        for match in pattern.finditer(text):
+            doc_type = match.group('type')
+            number = match.group('number') or ""
+            date = match.group('date') or ""
+
+            # Обработка даты
+            if date:
+                try:
+                    if len(date.split('.')[-1]) == 2:  # Год из 2 цифр
+                        date = datetime.strptime(date, '%d.%m.%y').strftime('%Y-%m-%d')
+                    else:
+                        date = datetime.strptime(date, '%d.%m.%Y').strftime('%Y-%m-%d')
+                except ValueError:
+                    pass  # Если не удалось распарсить — оставляем как есть
+
+            # Определение статуса — 100 символов до и после
+            context = text[max(0, match.start() - 100):match.end() + 100]
+            status_match = status_pattern.search(context)
+            status = status_match.group(0).lower() if status_match else ""
+
+            # Извлечение возможного названия после даты
+            title = ""
+            after_date_pos = match.end()
+            title_match = re.search(r'(?:от\s*\d{1,2}\.\d{2}\.\d{2,4})(.*?)(?=[\.\n]|$)', text[after_date_pos:])
+            if title_match:
+                title = title_match.group(1).strip()
+                title = re.sub(r'^(?:на|о)\s+', '', title, flags=re.IGNORECASE)  # удаляем "на"/"о" в начале
+
+            documents.append({
+                "Тип документа": doc_type,
+                "Номер": number,
+                "Дата": date,
+                "Название": title,
+                "Статус": status
+            })
+
+    return documents
